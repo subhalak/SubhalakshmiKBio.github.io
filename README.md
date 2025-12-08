@@ -1,4 +1,4 @@
-# Bulk-RNAseq analysis - From Raw reads to count matrix
+# Bulk-RNAseq analysis - From Raw reads to Count matrix
 
 RNA sequencing (RNA-Seq) is a powerful and widely used technique for studying the transcriptome, the complete set of RNA transcripts produced by the genome under specific conditions or in a specific cell type. 
 
