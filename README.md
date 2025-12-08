@@ -119,6 +119,246 @@ It can be downloaded from: https://daehwankimlab.github.io/hisat2/download/#h-sa
 The grch38_genome.tar.gz file contains eight HISAT2 index files. These .ht2 files are binary index files generated from the GRCh38 reference genome and are required by HISAT2 to
 perform sequence alignment. They represent different parts of the indexed genome, split for efficient loading and access during alignment.
 
+# Unzip the downloaded gzipped tar file:
+
+"tar -xzf grch38_genome.tar.gz"
+
+# Gene Annotation File (GTF)
+
+Download the gene annotation file:
+
+"wget -P $REFERENCE https://ftp.ensembl.org/pub/release-109/gtf/homo_sapiens/Homo_sapiens.GRCh38.109.gtf.gz"
+
+# Unzip the gz file:
+
+"gunzip Homo_sapiens.GRCh38.109.gtf.gz"
+
+This GTF file includes detailed gene structure annotations (e.g., exons, transcripts, gene IDs, gene symbols). It's required by tools like featureCounts for accurate gene-level read
+summarization.
+
+# STEP 01: QUALITY CONTROL (FastQC)
+
+Quality control (QC) is the first and critical step in RNA-seq data analysis. It checks for basequality scores, GC content, adapter contamination, and other issues in raw sequencing
+reads. 
+
+This step uses FastQC for individual report generation and MultiQC to combine them into one summary.
+
+# Run FastQC on All FASTQ Files
+This command runs FastQC on all paired-end FASTQ files for both experimental groups
+(LUNG_CA and LUNG_NOR) and stores the results in a designated output folder.
+
+"fastqc $FASTQ/LUNG_CA/*_1.fastq $FASTQ/LUNG_CA/*_2.fastq"
+"$FASTQ/LUNG_NOR/*_1.fastq $FASTQ/LUNG_NOR/*_2.fastq -o $FASTQC_Results -t 10"
+
+§ fastqc: The tool used for quality control checks.
+§ $FASTQ/LUNG_CA/*_1.fastq and $FASTQ/LUNG_CA/*_2.fastq: Read 1 and Read 2 FASTQ files from lung cancer samples.
+§ $FASTQ/LUNG_NOR/*_1.fastq and $FASTQ/LUNG_NOR/*_2.fastq: Read 1 and Read 2 FASTQ files from normal lung tissue.
+§ -o $FASTQC_Results: Specifies the output directory to store FastQC reports.
+§ -t 10: Utilizes 10 threads to speed up processing.
+
+This will generate zip and html file for each SRR files.
+
+# Generate a Summary Report with MultiQC
+
+Scans the FastQC output folder and generates a unified report summarizing quality across all samples.
+
+"multiqc $FASTQC_Results -o $FASTQC_Results"
+
+§ multiqc: Runs the tool.
+§ $FASTQC_Results: The folder containing FastQC output files.
+§ -o $FASTQC_Results: Tells MultiQC to save the summary report in the same location.
+
+OUTPUT: A folder called multiqc_data and a multiqc_report.html file, a comprehensive quality control report.
+
+View the Report on Your Local Machine
+
+Copies the multiqc_report.html file from the remote HPC server to your local system, allowing you to open it in a browser.
+
+After downloading, simply double-click the .html file to open it in your browser and inspect sample quality.
+
+# STEP 02: TRIMMING (Trimmomatic)
+
+Trimmomatic is a widely used software tool for trimming and filtering sequencing reads in RNA-seq analysis. Raw reads often contain low-quality bases, adapter sequences and excessively short reads from raw sequencing data that can interfere with accurate alignment and downstream analysis. 
+
+By trimming these problematic regions, Trimmomatic helps ensure that only high-quality, informative reads are used, thereby improving the reliability and accuracy of RNA-seq results.
+
+"trimmomatic PE input_1.fastq input_2.fastq out_1_paired.fq out_1_unpaired.fq out_2_paired.fq out_2_unpaired.fq SLIDINGWINDOW:4:20 MINLEN:36"
+
+§ trimmomatic: Calls the Trimmomatic program.
+§ PE: Specifies that the data is paired-end (two input files, one for each read direction).
+§ input_1.fastq: The first input FASTQ file (forward reads).
+§ input_2.fastq: The second input FASTQ file (reverse reads).
+§ out_1_paired.fq: Output file for surviving paired reads from the first input (both mates passed filters).
+§ out_1_unpaired.fq: Output file for reads from the first input whose mate was discarded (unpaired).
+§ out_2_paired.fq: Output file for surviving paired reads from the second input.
+§ out_2_unpaired.fq: Output file for reads from the second input whose mate was discarded.
+§ SLIDINGWINDOW:4:20: Applies a sliding window of 4 bases; if the average quality within the window drops below 20, the read is trimmed at that point.
+§ MINLEN:36: Discards any reads that are shorter than 36 bases after trimming.
+
+# STEP 03: ALIGNMENT TO REFERENCE GENOME (HISAT2)
+
+HISAT2 (Hierarchical Indexing for Spliced Alignment of Transcripts) is a fast, memory-efficient aligner designed for RNA-Seq data. It excels at handling spliced alignments and identifying splice junctions, making it ideal for transcriptome analysis. 
+
+HISAT2 uses a hierarchical indexing strategy combining a global FM index with thousands of local indexes, allowing rapid and accurate mapping of reads across large genomes like human, even those spanning exons or containing variants.
+
+"hisat2 -p 20 -x $REFERENCE/grch38/genome -1"
+"$FASTQ/LUNG_CA/SRR11262292_1.fastq -2 $FASTQ/LUNG_CA/SRR11262292_2.fastq -S"
+"$ALIGN/SRR11262292_aligned.sam"
+
+Similarly for each SRR pair files
+
+§ hisat2: Calls the HISAT2 aligner program.
+§ -p 20: Uses 20 CPU threads in parallel to speed up the alignment process.
+§ -x $REFERENCE/grch38/genome: Specifies the basename of the indexed reference genome to align against. Here, $REFERENCE/grch38/genome points to the reference genome index files for GRCh38.
+§ -1 $FASTQ/LUNG_CA/SRR11262292_1.fastq: Input file for the first (forward) reads of paired-end sequencing. The $FASTQ/LUNG_CA/SRR11262292_1.fastq is a shell variable pointing to the actual file path.
+§ -2 $FASTQ/LUNG_CA/SRR11262292_2.fastq: Input file for the second (reverse) reads of paired-end sequencing.
+§ -S $ALIGN/SRR11262292_aligned.sam: Output SAM file where the aligned reads will be written. $ALIGN/SRR11262292_aligned.sam is a variable for the output directory and file name.
+
+# With loop (one-liner for all files)
+
+"for fq1 in $FASTQ/LUNG_CA/*_1.fastq; do fq2=${fq1/_1.fastq/_2.fastq};
+base=$(basename $fq1 _1.fastq); hisat2 -p 20 -x $REFERENCE/grch38/genome -1
+$fq1 -2 $fq2 -S $ALIGN/${base}_aligned.sam; done"
+
+"for fq1 in $FASTQ/LUNG_NOR/*_1.fastq; do fq2=${fq1/_1.fastq/_2.fastq};
+base=$(basename $fq1 _1.fastq); hisat2 -p 20 -x $REFERENCE/grch38/genome -1
+$fq1 -2 $fq2 -S $ALIGN/${base}_aligned.sam; done"
+
+§ for fq1 in $FASTQ/LUNG_NOR/*_1.fastq; do ... done :This is a Bash loop. It iterates over all files in the directory $FASTQ/LUNG_NOR/ that end with _1.fastq (i.e., all
+forward read files for paired-end samples).
+§ fq2=${fq1/_1.fastq/_2.fastq}: For each fq1 (forward read file), this line creates the corresponding reverse read file name (fq2) by replacing _1.fastq with _2.fastq in the filename.
+§ base=$(basename $fq1 _1.fastq) :Extracts the base name of the sample (without the _1.fastq suffix) from the forward read file. This base name is used to name the output SAM
+file.
+§ hisat2 -p 20 -x $REFERENCE/grch38/genome -1 $fq1 -2 $fq2 -S $ALIGN/${base}_aligned.sam: 
+
+Runs HISAT2 for each sample pair:
+• -p 20: Uses 20 CPU threads.
+• -x $REFERENCE/grch38/genome: Reference genome index.
+• -1 $fq1: Forward reads file.
+• -2 $fq2: Reverse reads file.
+• -S $ALIGN/${base}_aligned.sam: Output SAM file, named for the sample.
+
+The primary output of HISAT2 is an alignment file in SAM (Sequence Alignment/Map) format, which contains detailed information about where each sequencing read maps to the reference
+genome. This SAM file includes alignment coordinates, mapping quality, CIGAR strings, and various optional tags for each read.
+
+# STEP 04: SAM TO BAM CONVERSION (Samtools)
+
+SAMtools is a widely used toolkit for processing sequence alignment data. 
+
+Converting a SAM (Sequence Alignment/Map) file to BAM (Binary Alignment/Map) format is a common step to reduce file size and improve processing speed. 
+
+First human-readable SAM file is converted into a compressed, binary BAM file. The BAM file is then sorted by genomic coordinates, which is required for many downstream tools. 
+
+Finally, an index is generated, creating a .bai file that allows rapid access to specific regions within the BAM file.
+
+Convert, sort, and generate index file (for a single sample)
+
+"samtools view -@ 20 -bS $ALIGN/SRR11262284_aligned.sam > 
+$BAM/SRR11262284.bam
+
+"samtools sort -@ 20 $BAM/SRR11262284.bam -o $BAM/SRR11262284_sorted.bam
+samtools index $BAM/SRR11262284_sorted.bam"
+
+Do same for the remaining files as well
+
+§ samtools view: Runs the samtools utility to view or convert alignment files.
+§ -@ 20: Uses 20 CPU threads for faster processing.
+§ -bS: -b: Output in BAM (binary) format; -S: Input is in SAM (text) format.
+§ $ALIGN/SRR11262284_aligned.sam: Input SAM file with alignments.
+  -  $BAM/SRR11262284.bam: Redirects the output to a new BAM file in the $BAM directory.
+§ samtools sort: Sorts the BAM file by genomic coordinates.
+§ -@ 20: Uses 20 CPU threads.
+§ $BAM/SRR11262284.bam: Input BAM file to be sorted.
+§ -o $BAM/SRR11262284_sorted.bam: Output file for the sorted BAM.
+§ samtools index: Creates an index file (.bai) for the sorted BAM.
+§ $BAM/SRR11262284_sorted.bam: Input sorted BAM file to be indexed.
+
+One-liner command – convert, sort, index file generation (for a single sample)
+
+"samtools view -@ 20 -bS $ALIGN/SRR11262284_aligned.sam | samtools sort -@ 20 -o $BAM/SRR11262284_sorted.bam && samtools index
+$BAM/SRR11262284_sorted.bam"
+
+Do same for the remaining files as well
+
+Loop for all .sam files present in $ALIGN (One-liner command)
+
+"for sam in $ALIGN/*_aligned.sam; do base=$(basename $sam _aligned.sam);
+samtools view -@ 20 -bS $sam | samtools sort -@ 20 -o
+$BAM/${base}_sorted.bam && samtools index $BAM/${base}_sorted.bam; done"
+
+To view bam file and sorted bam file:
+
+"samtools view SRR11262284.bam | head"
+"samtools view SRR11262284_sorted.bam | head"
+
+# STEP 05: READS COUNTING (FeatureCounts)
+
+featureCounts is a fast and accurate tool used to assign aligned RNA-Seq reads to genomic features such as genes or exons. It takes sorted BAM files and a gene annotation file (e.g., GTF or GFF) as input, and outputs a count matrix representing the number of reads mapped to each gene. This count data is essential for downstream differential gene expression analysis.
+
+"featureCounts -T 20 -p -a $REFERENCE/Homo_sapiens.GRCh38.109.gtf -o
+$COUNTS/SRR11262284_counts.txt $BAM/SRR11262284_sorted.bam"
+
+Do same for the remaining files as well
+
+§ featureCounts: The command-line tool from the Subread package used for assigning aligned reads to genomic features (e.g., genes, exons).
+§ -T 20: Use 20 CPU threads to speed up processing.
+§ -p: Enable paired-end mode, meaning reads from the same fragment (R1 and R2) are counted as a single unit.
+§ -a $REFERENCE/Homo_sapiens.GRCh38.109.gtf: The GTF annotation file specifying gene structures (e.g., exons, gene_id). This file tells featureCounts where to count reads.
+§ -o $COUNTS/SRR11262284_counts.txt: The output file where the count matrix
+
+for this sample will be saved. Each row = gene; last column = number of reads assigned to that gene.
+§ $BAM/SRR11262284_sorted.bam: The input BAM file containing aligned RNA-Seq reads (sorted by coordinate), to be counted.
+
+Loop for all .bam files present in $BAM (One-liner command)
+
+"for f in $BAM/*_sorted.bam; do featureCounts -T 20 -p -a
+$REFERENCE/Homo_sapiens.GRCh38.109.gtf -o $COUNTS/$(basename
+"${f%_sorted.bam}")_counts.txt "$f"; done"
+
+NOTE: featureCounts outputs raw integer counts i.e. the number of sequencing reads assigned to each gene or feature in each sample. These raw counts reflect the direct output
+of the quantification step and are not adjusted for differences in sequencing depth, gene length, or other technical factors.
+
+# FINAL: Merging Count Files into a Single File
+
+(This step can be also done with R or Python)
+
+After running featureCounts on multiple samples, it is necessary to combine the resulting individual count files into a single count matrix before performing DESeq2 analysis. 
+
+This is because DESeq2 requires a matrix where each row represents a gene and each column represents a sample, with the entries being the raw read counts. Combining the files ensures that all gene counts are aligned across samples, facilitating accurate normalization, statistical testing, and downstream interpretation. Without this unified matrix, it would be impossible to consistently compare gene expression across samples or conditions in DESeq2.
+
+mkdir MERGED_COUNTS
+export
+MERGED_COUNTS=/home/tundup/myAnalysis/BulkTranscriptomics/COUNTS/MERGED_COU
+NTS
+
+1. Extract Gene IDs (from any one file)
+awk 'NR>1 {print $1}' "$COUNTS/SRR11262284_counts.txt" >
+"$MERGED_COUNTS/geneids.txt"
+
+2. Extract count columns from each file
+for f in "$COUNTS"/*_counts.txt; do
+sample=$(basename "$f" _counts.txt)
+awk -v sample="$sample" 'NR==1 {next} {print $7}' "$f" >
+"$MERGED_COUNTS/${sample}_col.txt"
+done
+
+3. Merge gene IDs and all count columns
+paste "$MERGED_COUNTS/geneids.txt" "$MERGED_COUNTS"/*_col.txt >
+"$MERGED_COUNTS/merged_counts_body.txt"
+
+4. Renaming Column Names (Full Path as Column name to Filename only)
+
+View the file and column names:
+head $MERGED_COUNTS/merged_counts_body.txt
+
+Rename Column Names to last SRR IDs only:
+sed '1s/[^[:space:]]*\///g; 1s/_sorted\.bam//g' merged_counts_body.txt >
+merged_counts_clean.txt
+
+Confirm the renamed column names:
+head $MERGED_COUNTS/merged_counts_clean.txt
+
+
 # About the Dataset:
 
 This repository provides a complete, step-by-step hands-on/workshop for performing RNA-seq data analysis using publicly available datasets from the Gene Expression Omnibus (GEO). The dataset used in this project, GSE106305, contains
