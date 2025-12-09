@@ -6,10 +6,8 @@ This repository provides a fully reproducible workflow for Bulk RNA-Seq processi
 
 # Workflow diagram on Bulk RNA seq analysis
 
-SRA → FASTQ → QC → Trimming → Alignment → BAM → Count Matrix → DESeq2
-
-# Add screenshot here: (FastQC summary / MultiQC report)
-<!-- INSERT SCREENSHOT 1 HERE -->
+Here, we re-process 20 RNA-seq samples publicly available under GSE106305.
+The goal: convert raw sequencing data (SRA) → FASTQ → QC → trimmed reads → aligned BAM → gene-level counts → merged count matrix → DESeq2
 
 The workflow covers the two major phases of RNA-seq analysis:
 
@@ -18,18 +16,22 @@ The workflow covers the two major phases of RNA-seq analysis:
 
 This repository also contains a step-by-step guide for installing required tools, running commands, organizing output files, and performing DESeq2 analysis in R.
 
-# Introduction (Guo et al., 2019)
+# Bulk RNA-seq Processing Pipeline — Guo et al., 2019 (GEO dataset ID: GSE106305)
+
+A fully reproducible hands-on workflow for processing raw FASTQ → aligned BAM → gene counts → final count matrix using 20 RNA-seq samples (SRR7179504–SRR7179541) from:
 
 This tutorial is inspired by the study by Guo et al. (2019), “ONECUT2 is a driver of neuroendocrine prostate cancer,” published in Nature Communications
 🔗 https://www.nature.com/articles/s41467-019-11579-6
 
-The study identifies ONECUT2 as a key transcription factor driving neuroendocrine prostate cancer (NEPC)—a highly aggressive and treatment-resistant form of prostate cancer. Integrating transcriptomic and epigenomic datasets, the authors show that ONECUT2 activates neuroendocrine lineage programs, suppresses androgen receptor signaling, and promotes tumor progression. The work establishes ONECUT2 as a potential therapeutic target in NEPC.
+The study identifies ONECUT2 as a key transcription factor driving neuroendocrine prostate cancer (NEPC)—a highly aggressive and treatment-resistant form of prostate cancer. Integrating transcriptomic and epigenomic datasets, the authors show that ONECUT2 activates neuroendocrine lineage programs, suppresses androgen receptor signaling, and promotes tumor progression. The work establishes ONECUT2 as a potential therapeutic target in NEPC. 
+
+Note: The original analysis integrates transcriptomic profiling across multiple prostate cancer states.
 
 # Dataset Description
 
 Guo et al. utilize multiple publicly available and experimentally generated datasets, including RNA-seq, ChIP-seq, ATAC-seq, and additional prostate cancer transcriptomic datasets from GEO and dbGaP. These datasets include bulk RNA-seq profiles of tumor samples, cell lines, and PDX models.
 
-For this workshop, we demonstrate the workflow using a publicly accessible GEO dataset (example: GSE106305) containing multiple RNA-seq samples across biological conditions. Raw sequencing data are downloaded via SRA Toolkit, and all files are stored in structured directories for reproducibility.
+For this workshop, we demonstrate the workflow using a publicly accessible GEO dataset (Accession ID: GSE106305) containing multiple RNA-seq samples across biological conditions. Raw sequencing data are downloaded via SRA Toolkit, and all files are stored in structured directories for reproducibility.
 
 💡 Add screenshot here: (directory structure after creation)
 <!-- INSERT SCREENSHOT 2 HERE -->
