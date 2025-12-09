@@ -4,7 +4,7 @@ RNA-seq (RNA sequencing) is a powerful and widely used method to study the trans
 
 This repository provides a fully reproducible workflow for Bulk RNA-Seq processing, beginning with raw FASTQ files and ending with a complete count matrix ready for downstream analyses.
 
-# Add the workflow on Bulk RNA seq analysis we are working on
+# Workflow diagram on Bulk RNA seq analysis
 
 SRA → FASTQ → QC → Trimming → Alignment → BAM → Count Matrix → DESeq2
 
